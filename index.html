@@ -1441,6 +1441,32 @@ body {
   background: rgba(52,211,153,0.06);
 }
 
+
+/* Demo badge */
+.demo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(251,191,36,0.08);
+  border: 1px solid rgba(251,191,36,0.15);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-amber);
+  margin-bottom: 32px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.demo-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-amber);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
 /* Switch note */
 .switch-note {
   margin-top: 32px;
@@ -1608,6 +1634,11 @@ body {
   <!-- ================================
        STEP 1: DATA INPUT
        ================================ -->
+  <div class="demo-badge reveal">
+    <span class="demo-badge__dot"></span>
+    概念演示 — 以下为预设数据的效果展示，真实交互请使用 Claude Code Agent 版
+  </div>
+
   <section class="section" id="step-data">
     <div class="step-badge reveal">
       <span class="step-badge__num">1</span>
@@ -2148,7 +2179,7 @@ DAU 32万 环比-8%
 
       <div class="switch-note">
         <span class="switch-note__icon">↕</span>
-        可切换不同视角 — 每份都有总结→洞察→明细→建议，但侧重点不同
+        概念演示 · 可切换不同视角 — 真实交互请使用 Claude Code Agent 版，贴数据即可生成汇报
       </div>
     </div>
   </section>
