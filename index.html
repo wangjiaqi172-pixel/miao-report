@@ -1,0 +1,2501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>秒出汇报 — 丢数据进去，汇报稿出来</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ========================================
+   DESIGN TOKENS
+   ======================================== */
+:root {
+  /* Backgrounds */
+  --bg-base: #09090B;
+  --bg-elevated: #18181B;
+  --bg-surface: rgba(255,255,255,0.03);
+  --bg-surface-hover: rgba(255,255,255,0.05);
+
+  /* Borders */
+  --border-default: rgba(255,255,255,0.06);
+  --border-hover: rgba(255,255,255,0.12);
+  --border-selected: rgba(129,140,248,0.4);
+
+  /* Accent */
+  --accent-indigo: #818CF8;
+  --accent-indigo-deep: #6366F1;
+  --accent-violet: #8B5CF6;
+  --accent-emerald: #34D399;
+  --accent-red: #F87171;
+  --accent-amber: #FBBF24;
+
+  /* Text */
+  --text-primary: #FAFAFA;
+  --text-secondary: #A1A1AA;
+  --text-muted: #71717A;
+
+  /* Shadows */
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
+  --shadow-card-hover: 0 2px 4px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.3);
+  --shadow-glow-indigo: 0 0 24px rgba(99,102,241,0.15), 0 0 48px rgba(99,102,241,0.08);
+
+  /* Radius */
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+
+  /* Transitions */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 400ms;
+  --duration-slow: 600ms;
+
+  /* Fonts */
+  --font-heading: 'Sora', -apple-system, sans-serif;
+  --font-body: 'Sora', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+/* ========================================
+   RESET & BASE
+   ======================================== */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.7;
+  overflow-x: hidden;
+  position: relative;
+}
+
+::selection {
+  background: rgba(129,140,248,0.3);
+  color: var(--text-primary);
+}
+
+/* ========================================
+   BACKGROUND EFFECTS
+   ======================================== */
+.bg-orbs {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  will-change: transform;
+}
+
+.bg-orb--1 {
+  width: 600px;
+  height: 600px;
+  background: rgba(99,102,241,0.08);
+  top: -10%;
+  left: -5%;
+  animation: orb-drift-1 25s ease-in-out infinite;
+}
+
+.bg-orb--2 {
+  width: 500px;
+  height: 500px;
+  background: rgba(139,92,246,0.06);
+  top: 40%;
+  right: -8%;
+  animation: orb-drift-2 28s ease-in-out infinite;
+}
+
+.bg-orb--3 {
+  width: 450px;
+  height: 450px;
+  background: rgba(52,211,153,0.04);
+  bottom: -5%;
+  left: 20%;
+  animation: orb-drift-3 22s ease-in-out infinite;
+}
+
+@keyframes orb-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(60px, 40px) scale(1.05); }
+  66% { transform: translate(-30px, 80px) scale(0.95); }
+}
+
+@keyframes orb-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-50px, -30px) scale(1.08); }
+  66% { transform: translate(40px, -60px) scale(0.96); }
+}
+
+@keyframes orb-drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(70px, -40px) scale(1.04); }
+  66% { transform: translate(-40px, 30px) scale(1.06); }
+}
+
+/* Noise overlay */
+.bg-noise {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* ========================================
+   LAYOUT
+   ======================================== */
+.page-content {
+  position: relative;
+  z-index: 2;
+}
+
+.section {
+  padding: 120px 0;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
+.section--hero {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* ========================================
+   HERO
+   ======================================== */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+}
+
+.hero__title {
+  font-family: var(--font-heading);
+  font-size: 64px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  background: linear-gradient(180deg, #FAFAFA 0%, #A1A1AA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 16px;
+}
+
+.hero__tagline {
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: -0.01em;
+  margin-bottom: 64px;
+}
+
+/* Step flow indicator */
+.step-flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: relative;
+}
+
+.step-flow__line {
+  width: 56px;
+  height: 1px;
+  background: var(--border-hover);
+  flex-shrink: 0;
+}
+
+.step-flow__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.step-flow__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bg-base);
+  border: 2px solid var(--text-muted);
+  transition: all var(--duration-normal) var(--ease-spring);
+  position: relative;
+}
+
+.step-flow__dot--active {
+  border-color: var(--accent-indigo);
+  background: var(--accent-indigo);
+  box-shadow: 0 0 12px rgba(129,140,248,0.4);
+}
+
+.step-flow__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: color var(--duration-normal) var(--ease-spring);
+}
+
+.step-flow__item:hover .step-flow__label {
+  color: var(--text-secondary);
+}
+
+.step-flow__item:hover .step-flow__dot {
+  border-color: var(--accent-indigo);
+  transform: scale(1.2);
+}
+
+/* Scroll indicator */
+.scroll-indicator {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.4;
+  animation: scroll-bounce 2s ease-in-out infinite;
+}
+
+.scroll-indicator__chevron {
+  width: 20px;
+  height: 20px;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg);
+}
+
+@keyframes scroll-bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.4; }
+  50% { transform: translateX(-50%) translateY(8px); opacity: 0.6; }
+}
+
+/* ========================================
+   SECTION HEADINGS
+   ======================================== */
+.section-heading {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.section-subheading {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-bottom: 48px;
+}
+
+/* Step badge */
+.step-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-indigo);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 16px;
+  font-family: var(--font-mono);
+}
+
+.step-badge__num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(129,140,248,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+/* ========================================
+   GLASS CARD BASE
+   ======================================== */
+.glass-card {
+  background: var(--bg-surface);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition:
+    border-color var(--duration-normal) var(--ease-spring),
+    transform var(--duration-normal) var(--ease-spring),
+    box-shadow var(--duration-normal) var(--ease-spring),
+    background var(--duration-normal) var(--ease-spring);
+}
+
+.glass-card:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-surface-hover);
+}
+
+.glass-card--selectable {
+  cursor: pointer;
+  position: relative;
+}
+
+.glass-card--selectable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.glass-card--selected {
+  border-color: var(--border-selected);
+  box-shadow: var(--shadow-glow-indigo), var(--shadow-card);
+  transform: scale(1.02);
+}
+
+.glass-card--selected::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-indigo), var(--accent-indigo-deep));
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 6L5 8.5L9.5 3.5' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 12px;
+  animation: check-pop 300ms var(--ease-spring);
+}
+
+@keyframes check-pop {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* ========================================
+   STEP 1: DATA INPUT
+   ======================================== */
+.step-data {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.data-input-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.data-textarea {
+  width: 100%;
+  min-height: 260px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-primary);
+  line-height: 1.8;
+  resize: none;
+  outline: none;
+  transition: border-color var(--duration-normal) var(--ease-spring),
+              box-shadow var(--duration-normal) var(--ease-spring);
+}
+
+.data-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.data-textarea:focus {
+  border-color: rgba(129,140,248,0.3);
+  box-shadow: 0 0 0 3px rgba(129,140,248,0.08);
+}
+
+.data-char-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+/* AI preview panel */
+.data-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.data-preview__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.data-preview__title .pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.mini-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  opacity: 0;
+  transform: translateX(12px);
+  transition: all var(--duration-slow) var(--ease-spring);
+}
+
+.mini-card.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.mini-card__left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mini-card__metric {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.mini-card__value {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.mini-card__trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mini-card__trend--up {
+  color: var(--accent-emerald);
+}
+
+.mini-card__trend--down {
+  color: var(--accent-red);
+}
+
+.mini-card__trend--warn {
+  color: var(--accent-amber);
+}
+
+.trend-arrow {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+
+.trend-arrow--up {
+  border-bottom: 6px solid var(--accent-emerald);
+}
+
+.trend-arrow--down {
+  border-top: 6px solid var(--accent-red);
+}
+
+/* ========================================
+   STEP 2: SELECT MISSION
+   ======================================== */
+.mission-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.mission-card {
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+.mission-card__icon {
+  font-size: 32px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.mission-card__name {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.mission-card__desc {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ========================================
+   STEP 3: SELECT AUDIENCE
+   ======================================== */
+.audience-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.audience-card {
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+.audience-card__icon {
+  font-size: 32px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.audience-card__name {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.audience-card__desc {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.audience-card__tags {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  border: 1px solid rgba(255,255,255,0.04);
+  transition: all var(--duration-fast) var(--ease-spring);
+}
+
+.glass-card--selected .tag {
+  background: rgba(129,140,248,0.1);
+  color: var(--accent-indigo);
+  border-color: rgba(129,140,248,0.15);
+}
+
+/* Custom audience input */
+.custom-audience-input {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.custom-audience-field {
+  flex: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-spring);
+}
+.custom-audience-field::placeholder {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.custom-audience-field:focus {
+  border-color: var(--accent-indigo);
+}
+.custom-audience-confirm {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-indigo-deep);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-spring);
+  white-space: nowrap;
+}
+.custom-audience-confirm:hover {
+  background: var(--accent-indigo);
+  transform: translateY(-1px);
+}
+.audience-card--custom .audience-card__name.custom-filled {
+  color: var(--accent-indigo);
+}
+
+.mission-card--custom .mission-card__name.custom-filled {
+  color: var(--accent-indigo);
+}
+
+/* ========================================
+   STEP 4: AI PROCESSING
+   ======================================== */
+.processing-panel {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 40px;
+}
+
+.processing-step {
+  display: flex;
+  gap: 20px;
+  padding: 24px 0;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: all var(--duration-slow) var(--ease-spring);
+}
+
+.processing-step.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.processing-step:not(:last-child) {
+  border-bottom: 1px solid var(--border-default);
+}
+
+.processing-step__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  transition: all var(--duration-normal) var(--ease-spring);
+}
+
+.processing-step.processing .processing-step__icon {
+  border-color: rgba(129,140,248,0.3);
+  background: rgba(129,140,248,0.08);
+  animation: icon-pulse 1.5s ease-in-out infinite;
+}
+
+.processing-step.done .processing-step__icon {
+  border-color: rgba(52,211,153,0.3);
+  background: rgba(52,211,153,0.08);
+}
+
+@keyframes icon-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+.processing-step__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.processing-step__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.processing-step__check {
+  color: var(--accent-emerald);
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-spring);
+}
+
+.processing-step.done .processing-step__check {
+  opacity: 1;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-indigo), var(--accent-violet));
+  border-radius: 2px;
+  transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.processing-step.done .progress-bar__fill {
+  width: 100%;
+}
+
+.processing-step__result {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: all var(--duration-slow) var(--ease-spring);
+}
+
+.processing-step.done .processing-step__result {
+  opacity: 1;
+  max-height: 80px;
+}
+
+/* ========================================
+   STEP 5: REPORT OUTPUT
+   ======================================== */
+.report-panel {
+  padding: 0;
+}
+
+.report-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 40px;
+}
+
+.report-tab {
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-muted);
+  transition: all var(--duration-normal) var(--ease-spring);
+  font-family: var(--font-body);
+}
+
+.report-tab:hover {
+  border-color: var(--border-hover);
+  color: var(--text-secondary);
+}
+
+.report-tab.active {
+  background: rgba(129,140,248,0.12);
+  border-color: rgba(129,140,248,0.3);
+  color: var(--accent-indigo);
+}
+
+.report-content {
+  position: relative;
+  min-height: 500px;
+}
+
+.report-view {
+  display: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all var(--duration-slow) var(--ease-spring);
+}
+
+.report-view.active {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Report shared elements */
+.report-conclusion {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin-bottom: 32px;
+  padding: 28px 32px;
+  background: var(--bg-surface);
+  backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.report-conclusion::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--accent-indigo), var(--accent-violet));
+  border-radius: 2px;
+}
+
+.metric-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.metric-card {
+  padding: 24px;
+  background: var(--bg-surface);
+  backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metric-card__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.metric-card__value {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+}
+
+.metric-card__trend {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.metric-card__trend--positive {
+  color: var(--accent-emerald);
+}
+
+.metric-card__trend--negative {
+  color: var(--accent-red);
+}
+
+.metric-card__trend--warning {
+  color: var(--accent-amber);
+}
+
+/* Insight section (洞察) */
+.insight-section {
+  margin-bottom: 32px;
+}
+
+.insight-section__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.insight-section__title::before {
+  content: '💡';
+  font-size: 14px;
+}
+
+.insight-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.insight-card {
+  padding: 18px 22px;
+  background: rgba(129,140,248,0.04);
+  border: 1px solid rgba(129,140,248,0.1);
+  border-left: 3px solid var(--accent-indigo);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  transition: all var(--duration-fast) var(--ease-spring);
+}
+
+.insight-card:hover {
+  background: rgba(129,140,248,0.06);
+  border-color: rgba(129,140,248,0.15);
+}
+
+.insight-card strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Detail section (明细) */
+.detail-section {
+  margin-bottom: 32px;
+}
+
+.detail-section__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detail-section__title::before {
+  content: '📋';
+  font-size: 14px;
+}
+
+/* Reason cards */
+.reason-section {
+  margin-bottom: 32px;
+}
+
+.reason-section__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  letter-spacing: 0.02em;
+}
+
+.reason-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reason-card {
+  padding: 18px 22px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.reason-card__bullet {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-indigo);
+  flex-shrink: 0;
+  margin-top: 9px;
+}
+
+/* Action items */
+.action-section {
+  margin-bottom: 32px;
+}
+
+.action-section__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  letter-spacing: 0.02em;
+}
+
+.action-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.action-item {
+  padding: 18px 22px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all var(--duration-normal) var(--ease-spring);
+}
+
+.action-item:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-surface-hover);
+}
+
+.action-item__badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.action-item__badge--urgent {
+  background: rgba(248,113,113,0.12);
+  color: var(--accent-red);
+}
+
+.action-item__badge--suggest {
+  background: rgba(129,140,248,0.12);
+  color: var(--accent-indigo);
+}
+
+.action-item__badge--optional {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-muted);
+}
+
+.action-item__text {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+/* Team version specific */
+.team-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.team-card {
+  padding: 24px;
+  background: var(--bg-surface);
+  backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.team-card__name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-card__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.team-card__tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.team-card__task {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding-left: 14px;
+  position: relative;
+  line-height: 1.5;
+}
+
+.team-card__task::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+/* Timeline */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  padding-left: 24px;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--border-default);
+}
+
+.timeline-item {
+  padding: 12px 0 12px 24px;
+  position: relative;
+}
+
+.timeline-item__dot {
+  position: absolute;
+  left: -24px;
+  top: 16px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-indigo);
+  background: var(--bg-base);
+  z-index: 1;
+}
+
+.timeline-item__date {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-indigo);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.timeline-item__text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Caigou version - SKU table */
+.sku-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 32px;
+}
+
+.sku-table thead th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.sku-table tbody td {
+  font-size: 14px;
+  color: var(--text-secondary);
+  padding: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  vertical-align: middle;
+}
+
+.sku-table tbody tr {
+  transition: background var(--duration-fast) var(--ease-spring);
+}
+
+.sku-table tbody tr:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+.sku-table .sku-name {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sku-table .sku-action {
+  color: var(--accent-indigo);
+  font-weight: 500;
+}
+
+.sku-table .sku-effect {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.priority-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.priority-badge--high {
+  background: rgba(248,113,113,0.12);
+  color: var(--accent-red);
+}
+
+.priority-badge--medium {
+  background: rgba(129,140,248,0.12);
+  color: var(--accent-indigo);
+}
+
+.priority-badge--low {
+  background: rgba(251,191,36,0.12);
+  color: var(--accent-amber);
+}
+
+/* Generate button */
+.generate-section {
+  text-align: center;
+  padding: 48px 0;
+}
+
+.generate-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 48px;
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-indigo-deep), var(--accent-violet));
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--duration-normal) var(--ease-spring),
+              box-shadow var(--duration-normal) var(--ease-spring);
+  box-shadow: 0 4px 16px rgba(99,102,241,0.25), 0 0 48px rgba(99,102,241,0.08);
+}
+
+.generate-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 32px rgba(99,102,241,0.35), 0 0 64px rgba(99,102,241,0.12);
+}
+
+.generate-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.generate-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transform: translateX(-100%);
+  transition: transform 800ms ease;
+}
+
+.generate-btn:hover::before {
+  transform: translateX(100%);
+}
+
+.generate-btn--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.generate-btn__icon {
+  font-size: 20px;
+}
+
+/* Processing panel initially hidden */
+#step-processing {
+  display: none;
+}
+
+#step-processing.active {
+  display: block;
+}
+
+/* Step 5 initially hidden */
+#step-report {
+  display: none;
+}
+
+#step-report.active {
+  display: block;
+}
+
+/* Copy button */
+.report-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-spring);
+  letter-spacing: 0.02em;
+}
+
+.copy-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.06);
+}
+
+.copy-btn--copied {
+  border-color: rgba(52,211,153,0.3);
+  color: var(--accent-emerald);
+  background: rgba(52,211,153,0.06);
+}
+
+/* Switch note */
+.switch-note {
+  margin-top: 32px;
+  padding: 16px 20px;
+  background: rgba(255,255,255,0.02);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.switch-note__icon {
+  color: var(--accent-indigo);
+}
+
+/* ========================================
+   SCROLL ANIMATIONS
+   ======================================== */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity var(--duration-slow) var(--ease-spring),
+              transform var(--duration-slow) var(--ease-spring);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 100ms; }
+.reveal-delay-2 { transition-delay: 200ms; }
+.reveal-delay-3 { transition-delay: 300ms; }
+.reveal-delay-4 { transition-delay: 400ms; }
+.reveal-delay-5 { transition-delay: 500ms; }
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 900px) {
+  .section {
+    padding: 80px 24px;
+  }
+
+  .hero__title {
+    font-size: 44px;
+  }
+
+  .hero__tagline {
+    font-size: 17px;
+  }
+
+  .audience-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .step-data {
+    grid-template-columns: 1fr;
+  }
+
+  .mission-cards,
+  .audience-cards,
+  .metric-cards,
+  .team-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .step-flow__line {
+    width: 32px;
+  }
+
+  .step-flow__label {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 600px) {
+  .hero__title {
+    font-size: 36px;
+  }
+
+  .step-flow {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .step-flow__line {
+    display: none;
+  }
+
+  .step-flow__item {
+    padding: 0 8px;
+  }
+
+  .report-tabs {
+    flex-wrap: wrap;
+  }
+
+  .sku-table {
+    font-size: 12px;
+  }
+
+  .sku-table thead th,
+  .sku-table tbody td {
+    padding: 10px 8px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Background effects -->
+<div class="bg-orbs" aria-hidden="true">
+  <div class="bg-orb bg-orb--1"></div>
+  <div class="bg-orb bg-orb--2"></div>
+  <div class="bg-orb bg-orb--3"></div>
+</div>
+<div class="bg-noise" aria-hidden="true"></div>
+
+<div class="page-content">
+
+  <!-- ================================
+       HERO
+       ================================ -->
+  <section class="hero section--hero">
+    <h1 class="hero__title">秒出汇报</h1>
+    <p class="hero__tagline">丢数据进去，汇报稿出来</p>
+
+    <div class="step-flow">
+      <div class="step-flow__item">
+        <div class="step-flow__dot step-flow__dot--active"></div>
+        <span class="step-flow__label">丢数据</span>
+      </div>
+      <div class="step-flow__line"></div>
+      <div class="step-flow__item">
+        <div class="step-flow__dot"></div>
+        <span class="step-flow__label">选目标</span>
+      </div>
+      <div class="step-flow__line"></div>
+      <div class="step-flow__item">
+        <div class="step-flow__dot"></div>
+        <span class="step-flow__label">选对象</span>
+      </div>
+      <div class="step-flow__line"></div>
+      <div class="step-flow__item">
+        <div class="step-flow__dot"></div>
+        <span class="step-flow__label">出招</span>
+      </div>
+      <div class="step-flow__line"></div>
+      <div class="step-flow__item">
+        <div class="step-flow__dot"></div>
+        <span class="step-flow__label">看成果</span>
+      </div>
+    </div>
+
+    <div class="scroll-indicator" aria-hidden="true">
+      <div class="scroll-indicator__chevron"></div>
+    </div>
+  </section>
+
+  <!-- ================================
+       STEP 1: DATA INPUT
+       ================================ -->
+  <section class="section" id="step-data">
+    <div class="step-badge reveal">
+      <span class="step-badge__num">1</span>
+      Step
+    </div>
+    <h2 class="section-heading reveal">丢数据进去</h2>
+    <p class="section-subheading reveal">随便丢，格式不挑，AI自己看懂</p>
+
+    <div class="step-data">
+      <div class="data-input-area reveal">
+        <textarea class="data-textarea" id="dataInput" spellcheck="false">本周数据：
+DAU 32万 环比-8%
+新用户转化率 12.3% 环比-2.1pct
+核心功能使用率 45% 环比+3pct
+搜索到下单转化 3.2% 环比-0.8pct
+用户7日留存 28% 环比-1.5pct
+上周上线了新搜索算法v2
+竞品X周三上线了相似功能</textarea>
+        <div class="data-char-count"><span id="charCount">128</span> 字</div>
+      </div>
+
+      <div class="data-preview reveal reveal-delay-2">
+        <div class="data-preview__title">
+          <span class="pulse-dot"></span>
+          AI 已理解
+        </div>
+
+        <div class="mini-card" data-delay="0">
+          <div class="mini-card__left">
+            <span class="mini-card__metric">DAU</span>
+            <span class="mini-card__value">32万</span>
+          </div>
+          <div class="mini-card__trend mini-card__trend--down">
+            <span class="trend-arrow trend-arrow--down"></span>
+            -8%
+          </div>
+        </div>
+
+        <div class="mini-card" data-delay="100">
+          <div class="mini-card__left">
+            <span class="mini-card__metric">新用户转化</span>
+            <span class="mini-card__value">12.3%</span>
+          </div>
+          <div class="mini-card__trend mini-card__trend--down">
+            <span class="trend-arrow trend-arrow--down"></span>
+            -2.1pct
+          </div>
+        </div>
+
+        <div class="mini-card" data-delay="200">
+          <div class="mini-card__left">
+            <span class="mini-card__metric">功能使用率</span>
+            <span class="mini-card__value">45%</span>
+          </div>
+          <div class="mini-card__trend mini-card__trend--up">
+            <span class="trend-arrow trend-arrow--up"></span>
+            +3pct
+          </div>
+        </div>
+
+        <div class="mini-card" data-delay="300">
+          <div class="mini-card__left">
+            <span class="mini-card__metric">搜索→下单</span>
+            <span class="mini-card__value">3.2%</span>
+          </div>
+          <div class="mini-card__trend mini-card__trend--down">
+            <span class="trend-arrow trend-arrow--down"></span>
+            -0.8pct
+          </div>
+        </div>
+
+        <div class="mini-card" data-delay="400">
+          <div class="mini-card__left">
+            <span class="mini-card__metric">7日留存</span>
+            <span class="mini-card__value">28%</span>
+          </div>
+          <div class="mini-card__trend mini-card__trend--down">
+            <span class="trend-arrow trend-arrow--down"></span>
+            -1.5pct
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================
+       STEP 2: SELECT MISSION
+       ================================ -->
+  <section class="section" id="step-mission">
+    <div class="step-badge reveal">
+      <span class="step-badge__num">2</span>
+      Step
+    </div>
+    <h2 class="section-heading reveal">你想出什么类型的汇报？</h2>
+    <p class="section-subheading reveal">选一个核心目标，AI针对性出招</p>
+
+    <div class="mission-cards">
+      <div class="glass-card glass-card--selectable glass-card--selected mission-card reveal reveal-delay-1" data-group="mission" data-value="problem">
+        <div class="mission-card__icon">🔍</div>
+        <div class="mission-card__name">查问题</div>
+        <div class="mission-card__desc">数据异常，搞清楚为什么</div>
+      </div>
+      <div class="glass-card glass-card--selectable mission-card reveal reveal-delay-2" data-group="mission" data-value="progress">
+        <div class="mission-card__icon">📊</div>
+        <div class="mission-card__name">看进展</div>
+        <div class="mission-card__desc">汇报阶段性成果和进展</div>
+      </div>
+      <div class="glass-card glass-card--selectable mission-card reveal reveal-delay-3" data-group="mission" data-value="proposal">
+        <div class="mission-card__icon">💡</div>
+        <div class="mission-card__name">提方案</div>
+        <div class="mission-card__desc">基于数据给决策建议</div>
+      </div>
+      <div class="glass-card glass-card--selectable mission-card mission-card--custom reveal reveal-delay-4" data-group="mission" data-value="custom-mission" id="customMissionCard">
+        <div class="mission-card__icon">✏️</div>
+        <div class="mission-card__name">自定义</div>
+        <div class="mission-card__desc">自己输入汇报目标</div>
+        <div class="custom-audience-input" id="customMissionInput" style="display:none">
+          <input type="text" class="custom-audience-field" id="customMissionField" placeholder="比如：用户流失分析、竞品对比、新品复盘..." maxlength="20">
+          <button class="custom-audience-confirm" id="customMissionConfirm">确定</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================
+       STEP 3: SELECT AUDIENCE
+       ================================ -->
+  <section class="section" id="step-audience">
+    <div class="step-badge reveal">
+      <span class="step-badge__num">3</span>
+      Step
+    </div>
+    <h2 class="section-heading reveal">这份汇报给谁看？</h2>
+    <p class="section-subheading reveal">不同对象，不同话术和重点</p>
+
+    <div class="audience-cards">
+      <div class="glass-card glass-card--selectable glass-card--selected audience-card reveal reveal-delay-1" data-group="audience" data-value="boss">
+        <div class="audience-card__icon">👔</div>
+        <div class="audience-card__name">给老板</div>
+        <div class="audience-card__desc">结论先行，建议明确</div>
+        <div class="audience-card__tags">
+          <span class="tag">结论</span>
+          <span class="tag">数字</span>
+          <span class="tag">决策点</span>
+        </div>
+      </div>
+      <div class="glass-card glass-card--selectable audience-card reveal reveal-delay-2" data-group="audience" data-value="team">
+        <div class="audience-card__icon">👥</div>
+        <div class="audience-card__name">给团队</div>
+        <div class="audience-card__desc">原因拆透，分工清晰</div>
+        <div class="audience-card__tags">
+          <span class="tag">原因</span>
+          <span class="tag">分工</span>
+          <span class="tag">下一步</span>
+        </div>
+      </div>
+      <div class="glass-card glass-card--selectable audience-card reveal reveal-delay-3" data-group="audience" data-value="caigou">
+        <div class="audience-card__icon">🛒</div>
+        <div class="audience-card__name">给采销</div>
+        <div class="audience-card__desc">具体到SKU，可执行</div>
+        <div class="audience-card__tags">
+          <span class="tag">SKU</span>
+          <span class="tag">操作</span>
+          <span class="tag">deadline</span>
+        </div>
+      </div>
+
+      <!-- Custom audience option -->
+      <div class="glass-card glass-card--selectable audience-card audience-card--custom reveal reveal-delay-4" data-group="audience" data-value="custom" id="customAudienceCard">
+        <div class="audience-card__icon">✏️</div>
+        <div class="audience-card__name">自定义</div>
+        <div class="audience-card__desc">自己输入汇报对象</div>
+        <div class="audience-card__tags">
+          <span class="tag">灵活</span>
+          <span class="tag">任意角色</span>
+        </div>
+        <div class="custom-audience-input" id="customAudienceInput" style="display:none">
+          <input type="text" class="custom-audience-field" id="customAudienceField" placeholder="比如：给CFO、给合作伙伴、给新品团队..." maxlength="20">
+          <button class="custom-audience-confirm" id="customAudienceConfirm">确定</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================
+       GENERATE BUTTON
+       ================================ -->
+  <section class="section generate-section" id="step-generate">
+    <button class="generate-btn" id="generateBtn">
+      <span class="generate-btn__icon">⚡</span>
+      生成汇报
+    </button>
+  </section>
+
+  <!-- ================================
+       STEP 4: AI PROCESSING
+       ================================ -->
+  <section class="section" id="step-processing">
+    <div class="step-badge reveal">
+      <span class="step-badge__num">4</span>
+      Step
+    </div>
+    <h2 class="section-heading reveal">出招</h2>
+    <p class="section-subheading reveal">AI根据你的数据和目标，生成专属汇报</p>
+
+    <div class="glass-card processing-panel reveal" id="processingPanel">
+      <div class="processing-step" data-step="1">
+        <div class="processing-step__icon">🔍</div>
+        <div class="processing-step__content">
+          <div class="processing-step__title">
+            扫描数据
+            <span class="processing-step__check">✓</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-bar__fill"></div>
+          </div>
+          <div class="processing-step__result">识别5个关键指标变化：DAU下降、新用户转化下降、功能使用率上升、搜索下单下降、留存下降</div>
+        </div>
+      </div>
+
+      <div class="processing-step" data-step="2">
+        <div class="processing-step__icon">🧠</div>
+        <div class="processing-step__content">
+          <div class="processing-step__title">
+            分析原因
+            <span class="processing-step__check">✓</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-bar__fill"></div>
+          </div>
+          <div class="processing-step__result">DAU降但功能使用率升，说明老用户粘性增强；新用户转化-2.1pct与搜索v2上线时间吻合</div>
+        </div>
+      </div>
+
+      <div class="processing-step" data-step="3">
+        <div class="processing-step__icon">📝</div>
+        <div class="processing-step__content">
+          <div class="processing-step__title">
+            生成汇报
+            <span class="processing-step__check">✓</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-bar__fill"></div>
+          </div>
+          <div class="processing-step__result">已按老板视角生成汇报稿（总结→洞察→明细→建议），可切换团队版/采销版</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================
+       STEP 5: REPORT OUTPUT
+       ================================ -->
+  <section class="section" id="step-report">
+    <div class="step-badge reveal">
+      <span class="step-badge__num">5</span>
+      Step
+    </div>
+    <h2 class="section-heading reveal">看成果</h2>
+    <p class="section-subheading reveal">三份视角，一键切换</p>
+
+    <div class="report-panel reveal">
+      <div class="report-actions">
+        <div class="report-tabs">
+          <button class="report-tab active" data-tab="boss">👔 老板版</button>
+          <button class="report-tab" data-tab="team">👥 团队版</button>
+          <button class="report-tab" data-tab="caigou">🛒 采销版</button>
+          <button class="report-tab report-tab--custom" data-tab="custom" style="display:none">✏️ 自定义版</button>
+        </div>
+        <button class="copy-btn" id="copyBtn">📋 复制汇报</button>
+      </div>
+
+      <div class="report-content">
+
+        <!-- BOSS VERSION -->
+        <div class="report-view active" id="view-boss">
+          <!-- 总结 -->
+          <div class="report-conclusion">DAU掉了8%，但老用户用得更多了 — 问题出在新用户进不来</div>
+
+          <!-- 洞察 -->
+          <div class="insight-section">
+            <div class="insight-section__title">洞察</div>
+            <div class="insight-cards">
+              <div class="insight-card"><strong>DAU降8%但核心功能使用率涨3%</strong> — 不是用户不想用，是老用户粘性增强、新用户进不来，总量下降但深度在涨</div>
+              <div class="insight-card"><strong>新用户转化-2.1pct和搜索→下单-0.8pct同时下降</strong> — 搜索算法v2上周上线，时间点高度吻合，大概率是算法导致新用户转化链路断了</div>
+              <div class="insight-card"><strong>竞品X周三上线相似功能</strong> — 可能分流了15-20%潜在新用户，但不是主因（主因是转化率跌，不是流量跌）</div>
+            </div>
+          </div>
+
+          <!-- 明细 -->
+          <div class="detail-section">
+            <div class="detail-section__title">明细</div>
+            <div class="metric-cards">
+              <div class="metric-card">
+                <span class="metric-card__label">DAU</span>
+                <span class="metric-card__value">32万</span>
+                <span class="metric-card__trend metric-card__trend--negative">↓ 8%</span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-card__label">新用户转化</span>
+                <span class="metric-card__value">12.3%</span>
+                <span class="metric-card__trend metric-card__trend--negative">↓ 2.1pct</span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-card__label">功能使用率</span>
+                <span class="metric-card__value">45%</span>
+                <span class="metric-card__trend metric-card__trend--positive">↑ 3pct</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 建议 -->
+          <div class="action-section">
+            <div class="action-section__title">建议</div>
+            <div class="action-items">
+              <div class="action-item">
+                <span class="action-item__badge action-item__badge--urgent">紧急</span>
+                <span class="action-item__text">搜索算法v2本周回滚v1，或紧急上线A/B实验对比转化差异 — 转化率每跌1pct，日均少进2400新用户</span>
+              </div>
+              <div class="action-item">
+                <span class="action-item__badge action-item__badge--suggest">建议</span>
+                <span class="action-item__text">竞品功能对标分析2周内完成，出差异化方案 — 竞品刚上线是窗口期，晚了用户习惯就定了</span>
+              </div>
+              <div class="action-item">
+                <span class="action-item__badge action-item__badge--optional">可选</span>
+                <span class="action-item__text">7日留存-1.5pct持续关注，如果下周继续跌说明算法v2也伤了老用户体验，必须回滚</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TEAM VERSION -->
+        <div class="report-view" id="view-team">
+          <!-- 总结 -->
+          <div class="report-conclusion">新用户进不来，需分头排查算法和竞品两条线</div>
+
+          <!-- 洞察 -->
+          <div class="insight-section">
+            <div class="insight-section__title">洞察</div>
+            <div class="insight-cards">
+              <div class="insight-card"><strong>原因链：搜索算法v2 → 新用户转化下降 → DAU下降</strong> — 算法上线时间和新用户转化下降时间对齐，这是主因</div>
+              <div class="insight-card"><strong>竞品分流是次因</strong> — 竞品周三上线，但DAU从周一开始就降了，时间不对齐，说明流量没被抢走，是进来的人没转化</div>
+              <div class="insight-card"><strong>老用户反而更活跃</strong> — 核心功能使用率+3%，说明产品对存量用户没问题，专注修新用户链路</div>
+            </div>
+          </div>
+
+          <!-- 明细 -->
+          <div class="detail-section">
+            <div class="detail-section__title">明细 — 任务分工</div>
+            <div class="team-cards">
+              <div class="team-card">
+                <div class="team-card__name">
+                  <span class="team-card__dot" style="background:var(--accent-indigo)"></span>
+                  搜索团队
+                </div>
+                <div class="team-card__tasks">
+                  <div class="team-card__task">拉搜索v1和v2的新用户转化对比数据</div>
+                  <div class="team-card__task">定位v2哪些query结果变差</div>
+                  <div class="team-card__task">准备v1回滚方案，随时能切</div>
+                </div>
+              </div>
+              <div class="team-card">
+                <div class="team-card__name">
+                  <span class="team-card__dot" style="background:var(--accent-emerald)"></span>
+                  产品团队
+                </div>
+                <div class="team-card__tasks">
+                  <div class="team-card__task">竞品X功能拆解，对比我方差异</div>
+                  <div class="team-card__task">新用户注册→首次使用全链路埋点检查</div>
+                </div>
+              </div>
+              <div class="team-card">
+                <div class="team-card__name">
+                  <span class="team-card__dot" style="background:var(--accent-amber)"></span>
+                  数据团队
+                </div>
+                <div class="team-card__tasks">
+                  <div class="team-card__task">7日留存分群：新老用户分开看趋势</div>
+                  <div class="team-card__task">每日追踪转化率变化，设定预警线</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 建议 -->
+          <div class="action-section">
+            <div class="action-section__title">建议 — 时间线</div>
+            <div class="timeline">
+              <div class="timeline-item">
+                <div class="timeline-item__dot"></div>
+                <div class="timeline-item__date">本周三前</div>
+                <div class="timeline-item__text">搜索v1/v2转化对比数据出来，决定是否回滚</div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-item__dot"></div>
+                <div class="timeline-item__date">本周五前</div>
+                <div class="timeline-item__text">新用户链路埋点检查完成，确认是否有断点</div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-item__dot"></div>
+                <div class="timeline-item__date">2周内</div>
+                <div class="timeline-item__text">竞品对标分析完成，出差异化方案初版</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CAIGOU VERSION -->
+        <div class="report-view" id="view-caigou">
+          <!-- 总结 -->
+          <div class="report-conclusion">新用户转化链路断了，搜索算法是最大嫌疑</div>
+
+          <!-- 洞察 -->
+          <div class="insight-section">
+            <div class="insight-section__title">洞察</div>
+            <div class="insight-cards">
+              <div class="insight-card"><strong>搜索算法v2导致转化下降</strong> — 上线时间=转化下降时间，且搜索→下单降0.8pct直接证明搜索结果变差</div>
+              <div class="insight-card"><strong>转化率每跌1pct = 日均少2400新用户</strong> — 当前-2.1pct，相当于每天少约5000人，一周就是3.5万</div>
+              <div class="insight-card"><strong>7日留存也在跌（-1.5pct）</strong> — 如果下周继续跌，说明不只是新用户问题，老用户也开始受影响</div>
+            </div>
+          </div>
+
+          <!-- 明细 -->
+          <div class="detail-section">
+            <div class="detail-section__title">明细 — 操作清单</div>
+            <table class="sku-table">
+              <thead>
+                <tr>
+                  <th>事项</th>
+                  <th>当前状态</th>
+                  <th>建议动作</th>
+                  <th>预期效果</th>
+                  <th>优先级</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="sku-name">搜索算法v2</td>
+                  <td>新用户转化-2.1pct</td>
+                  <td class="sku-action">回滚v1或A/B测试</td>
+                  <td class="sku-effect">转化回升1.5-2pct</td>
+                  <td><span class="priority-badge priority-badge--high">高</span></td>
+                </tr>
+                <tr>
+                  <td class="sku-name">竞品X功能</td>
+                  <td>周三上线相似功能</td>
+                  <td class="sku-action">对标分析+差异化</td>
+                  <td class="sku-effect">挽回15-20%分流</td>
+                  <td><span class="priority-badge priority-badge--medium">中</span></td>
+                </tr>
+                <tr>
+                  <td class="sku-name">7日留存</td>
+                  <td>-1.5pct持续下降</td>
+                  <td class="sku-action">分群监控，设预警线</td>
+                  <td class="sku-effect">防止老用户流失</td>
+                  <td><span class="priority-badge priority-badge--low">低</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 建议 -->
+          <div class="action-section">
+            <div class="action-section__title">建议 — 操作要点</div>
+            <div class="reason-cards">
+              <div class="reason-card">
+                <div class="reason-card__bullet"></div>
+                <div>搜索v2先别急着删 — 上A/B实验对比3天数据，v1显著好于v2再回滚，有数据才好跟技术团队说话</div>
+              </div>
+              <div class="reason-card">
+                <div class="reason-card__bullet"></div>
+                <div>竞品分析别只看功能列表 — 重点看它哪一步转化做得比我们好，抄过来比自己创新快</div>
+              </div>
+              <div class="reason-card">
+                <div class="reason-card__bullet"></div>
+                <div>留存如果下周还跌0.5pct以上，必须回滚算法 — 到那时候不是新用户的问题了，是老用户也开始跑了</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CUSTOM VERSION -->
+        <div class="report-view" id="view-custom">
+          <!-- 总结 -->
+          <div class="report-conclusion" id="customConclusion">DAU掉了8%，但老用户用得更多了 — 问题出在新用户进不来</div>
+
+          <!-- 洞察 -->
+          <div class="insight-section">
+            <div class="insight-section__title">洞察</div>
+            <div class="insight-cards">
+              <div class="insight-card"><strong>DAU降8%但核心功能使用率涨3%</strong> — 不是用户不想用，是老用户粘性增强、新用户进不来</div>
+              <div class="insight-card"><strong>搜索算法v2上线时间与转化下降高度吻合</strong> — 大概率是算法导致新用户转化链路断了</div>
+              <div class="insight-card"><strong>竞品X分流是次因</strong> — 主因是转化率跌，不是流量跌</div>
+            </div>
+          </div>
+
+          <!-- 明细 -->
+          <div class="detail-section">
+            <div class="detail-section__title">明细</div>
+            <div class="metric-cards">
+              <div class="metric-card">
+                <span class="metric-card__label">DAU</span>
+                <span class="metric-card__value">32万</span>
+                <span class="metric-card__trend metric-card__trend--negative">↓ 8%</span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-card__label">新用户转化</span>
+                <span class="metric-card__value">12.3%</span>
+                <span class="metric-card__trend metric-card__trend--negative">↓ 2.1pct</span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-card__label">功能使用率</span>
+                <span class="metric-card__value">45%</span>
+                <span class="metric-card__trend metric-card__trend--positive">↑ 3pct</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 建议 -->
+          <div class="action-section">
+            <div class="action-section__title">建议</div>
+            <div class="action-items">
+              <div class="action-item">
+                <span class="action-item__badge action-item__badge--urgent">紧急</span>
+                <span class="action-item__text">搜索算法v2回滚或A/B测试，转化率每跌1pct日均少进2400新用户</span>
+              </div>
+              <div class="action-item">
+                <span class="action-item__badge action-item__badge--suggest">建议</span>
+                <span class="action-item__text">竞品功能对标2周内完成，出差异化方案</span>
+              </div>
+              <div class="action-item">
+                <span class="action-item__badge action-item__badge--optional">可选</span>
+                <span class="action-item__text">7日留存持续监控，下周再跌0.5pct以上必须回滚</span>
+              </div>
+            </div>
+          </div>
+        </div>      </div>
+
+      <div class="switch-note">
+        <span class="switch-note__icon">↕</span>
+        可切换不同视角 — 每份都有总结→洞察→明细→建议，但侧重点不同
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer spacer -->
+  <div style="height: 80px;"></div>
+
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  /* ========================================
+     INTERSECTION OBSERVER - SCROLL REVEAL
+     ======================================== */
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, {
+    threshold: 0.15,
+    rootMargin: '0px 0px -40px 0px'
+  });
+
+  document.querySelectorAll('.reveal').forEach(el => {
+    revealObserver.observe(el);
+  });
+
+  /* ========================================
+     MINI CARDS STAGGER ANIMATION
+     ======================================== */
+  const miniCardObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const cards = entry.target.querySelectorAll('.mini-card');
+        cards.forEach((card, i) => {
+          const delay = parseInt(card.dataset.delay || 0);
+          setTimeout(() => {
+            card.classList.add('visible');
+          }, 200 + delay);
+        });
+        miniCardObserver.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.2
+  });
+
+  const dataPreview = document.querySelector('.data-preview');
+  if (dataPreview) {
+    miniCardObserver.observe(dataPreview);
+  }
+
+  /* ========================================
+     CARD SELECTION
+     ======================================== */
+  document.querySelectorAll('.glass-card--selectable').forEach(card => {
+    card.addEventListener('click', function() {
+      const group = this.dataset.group;
+      if (!group) return;
+
+      // Deselect siblings
+      document.querySelectorAll(`.glass-card--selectable[data-group="${group}"]`).forEach(sibling => {
+        sibling.classList.remove('glass-card--selected');
+      });
+
+      // Select this one
+      this.classList.add('glass-card--selected');
+
+      // If audience card, also switch report tab
+      if (group === 'audience') {
+        const value = this.dataset.value;
+
+        // Show/hide custom input
+        const customInput = document.getElementById('customAudienceInput');
+        if (value === 'custom') {
+          customInput.style.display = 'flex';
+          document.getElementById('customAudienceField').focus();
+        } else {
+          customInput.style.display = 'none';
+          switchReportTab(value);
+        }
+      }
+
+      // If mission card, handle custom mission
+      if (group === 'mission') {
+        const value = this.dataset.value;
+        const customInput = document.getElementById('customMissionInput');
+        if (value === 'custom-mission') {
+          customInput.style.display = 'flex';
+          document.getElementById('customMissionField').focus();
+        } else {
+          customInput.style.display = 'none';
+        }
+      }
+    });
+  });
+
+  // Custom audience confirm
+  const customConfirm = document.getElementById('customAudienceConfirm');
+  const customField = document.getElementById('customAudienceField');
+  const customTab = document.querySelector('.report-tab--custom');
+
+  function applyCustomAudience() {
+    const val = customField.value.trim();
+    if (!val) return;
+
+    // Update the custom card name
+    const nameEl = document.querySelector('#customAudienceCard .audience-card__name');
+    nameEl.textContent = val;
+    nameEl.classList.add('custom-filled');
+
+    // Update the custom tab label
+    customTab.textContent = '✏️ ' + val;
+    customTab.style.display = '';
+
+    // Switch to custom tab
+    switchReportTab('custom');
+  }
+
+  customConfirm.addEventListener('click', applyCustomAudience);
+  customField.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') applyCustomAudience();
+  });
+
+  // Custom mission confirm
+  const customMissionConfirm = document.getElementById('customMissionConfirm');
+  const customMissionField = document.getElementById('customMissionField');
+
+  function applyCustomMission() {
+    const val = customMissionField.value.trim();
+    if (!val) return;
+
+    const nameEl = document.querySelector('#customMissionCard .mission-card__name');
+    nameEl.textContent = val;
+    nameEl.classList.add('custom-filled');
+  }
+
+  customMissionConfirm.addEventListener('click', applyCustomMission);
+  customMissionField.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') applyCustomMission();
+  });
+
+  /* ========================================
+     REPORT TABS
+     ======================================== */
+  function switchReportTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.report-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.tab === tabName);
+    });
+
+    // Update views with animation
+    document.querySelectorAll('.report-view').forEach(view => {
+      if (view.classList.contains('active')) {
+        view.style.opacity = '0';
+        view.style.transform = 'translateY(8px)';
+        setTimeout(() => {
+          view.classList.remove('active');
+          view.style.opacity = '';
+          view.style.transform = '';
+
+          // Show new view
+          const newView = document.getElementById('view-' + tabName);
+          if (newView) {
+            newView.classList.add('active');
+            // Force reflow then animate in
+            void newView.offsetHeight;
+            newView.style.opacity = '1';
+            newView.style.transform = 'translateY(0)';
+          }
+        }, 200);
+      }
+    });
+  }
+
+  document.querySelectorAll('.report-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      switchReportTab(this.dataset.tab);
+    });
+  });
+
+  /* ========================================
+     AI PROCESSING ANIMATION
+     ======================================== */
+  let processingTriggered = false;
+
+  const generateBtn = document.getElementById('generateBtn');
+  if (generateBtn) {
+    generateBtn.addEventListener('click', function() {
+      if (processingTriggered) return;
+      processingTriggered = true;
+
+      this.style.opacity = '0';
+      this.style.transform = 'scale(0.95)';
+      this.style.transition = 'all 400ms cubic-bezier(0.16, 1, 0.3, 1)';
+
+      setTimeout(() => {
+        this.style.display = 'none';
+
+        const processingSection = document.getElementById('step-processing');
+        processingSection.classList.add('active');
+        processingSection.style.opacity = '0';
+        processingSection.style.transform = 'translateY(16px)';
+
+        requestAnimationFrame(() => {
+          processingSection.style.transition = 'all 600ms cubic-bezier(0.16, 1, 0.3, 1)';
+          processingSection.style.opacity = '1';
+          processingSection.style.transform = 'translateY(0)';
+        });
+
+        setTimeout(() => {
+          processingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 200);
+
+        runProcessingAnimation();
+      }, 400);
+    });
+  }
+
+  function runProcessingAnimation() {
+    const steps = document.querySelectorAll('.processing-step');
+
+    steps.forEach((step, index) => {
+      setTimeout(() => {
+        step.classList.add('visible');
+
+        setTimeout(() => {
+          step.classList.add('processing');
+
+          const fill = step.querySelector('.progress-bar__fill');
+          if (fill) {
+            fill.style.width = '100%';
+          }
+
+          setTimeout(() => {
+            step.classList.remove('processing');
+            step.classList.add('done');
+
+            if (index === steps.length - 1) {
+              setTimeout(() => {
+                const reportSection = document.getElementById('step-report');
+                reportSection.classList.add('active');
+                reportSection.style.opacity = '0';
+                reportSection.style.transform = 'translateY(16px)';
+
+                requestAnimationFrame(() => {
+                  reportSection.style.transition = 'all 600ms cubic-bezier(0.16, 1, 0.3, 1)';
+                  reportSection.style.opacity = '1';
+                  reportSection.style.transform = 'translateY(0)';
+                });
+
+                setTimeout(() => {
+                  reportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 200);
+              }, 600);
+            }
+          }, 1600);
+        }, 300);
+      }, index * 800);
+    });
+  }
+
+  /* ========================================
+     COPY REPORT
+     ======================================== */
+  const copyBtn = document.getElementById('copyBtn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function() {
+      const activeView = document.querySelector('.report-view.active');
+      if (!activeView) return;
+
+      const text = activeView.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        this.textContent = '✓ 已复制';
+        this.classList.add('copy-btn--copied');
+        setTimeout(() => {
+          this.textContent = '📋 复制汇报';
+          this.classList.remove('copy-btn--copied');
+        }, 2000);
+      });
+    });
+  }
+
+  /* ========================================
+     TEXTAREA CHARACTER COUNT
+     ======================================== */
+  const textarea = document.getElementById('dataInput');
+  const charCount = document.getElementById('charCount');
+
+  if (textarea && charCount) {
+    textarea.addEventListener('input', function() {
+      charCount.textContent = this.value.length;
+    });
+  }
+
+  /* ========================================
+     STEP FLOW DOT ACTIVATION ON SCROLL
+     ======================================== */
+  const stepSections = [
+    { id: 'step-data', dotIndex: 0 },
+    { id: 'step-mission', dotIndex: 1 },
+    { id: 'step-audience', dotIndex: 2 },
+    { id: 'step-processing', dotIndex: 3 },
+    { id: 'step-report', dotIndex: 4 }
+  ];
+
+  const stepDots = document.querySelectorAll('.step-flow__dot');
+
+  const stepFlowObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const section = stepSections.find(s => s.id === entry.target.id);
+      if (section && entry.isIntersecting) {
+        stepDots.forEach((dot, i) => {
+          dot.classList.toggle('step-flow__dot--active', i === section.dotIndex);
+        });
+      }
+    });
+  }, {
+    threshold: 0.3
+  });
+
+  stepSections.forEach(s => {
+    const el = document.getElementById(s.id);
+    if (el) stepFlowObserver.observe(el);
+  });
+
+  /* ========================================
+     SCROLL INDICATOR HIDE ON SCROLL
+     ======================================== */
+  const scrollIndicator = document.querySelector('.scroll-indicator');
+  if (scrollIndicator) {
+    let scrollHidden = false;
+    window.addEventListener('scroll', function() {
+      if (window.scrollY > 100 && !scrollHidden) {
+        scrollIndicator.style.opacity = '0';
+        scrollIndicator.style.transition = 'opacity 500ms ease';
+        scrollHidden = true;
+      }
+    }, { passive: true });
+  }
+
+})();
+</script>
+
+</body>
+</html>
